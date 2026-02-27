@@ -533,6 +533,8 @@ input {
 .p5-modal-image {
     max-width: 100%;
     max-height: 80vh;
+    min-width: 300px;
+    min-height: 300px;
     display: block;
     border: var(--p5-border-width) solid var(--p5-light-gray);
 }
@@ -721,7 +723,7 @@ input {
 .upload-area:hover {
     border-color: var(--p5-red);
     background-color: var(--p5-medium-gray);
-    transform: skew(-2deg);
+    box-shadow: 5px 5px 0 var(--p5-red-dark);
 }
 
 .upload-area.dragover {
