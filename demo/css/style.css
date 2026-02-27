@@ -120,13 +120,51 @@ input {
 }
 
 .app-title {
-    font-size: var(--p5-font-size-xl);
-    font-weight: bold;
-    color: var(--p5-white);
+    display: inline-flex;
+    align-items: baseline;
+    gap: 4px;
     text-transform: uppercase;
-    letter-spacing: 2px;
-    transform: skew(-10deg);
+    font-weight: 900;
+    font-size: 24px;
+}
+
+/* P5 招贴字体 - 基础字符样式 */
+.p5-char {
+    display: inline-block;
+    font-weight: 900;
+    color: var(--p5-white);
+    letter-spacing: 0;
+    line-height: 1;
     text-shadow: 2px 2px 0 var(--p5-red);
+    transform: skew(-10deg);
+}
+
+/* 反色字符 - 红底白字 */
+.p5-char-inv {
+    background-color: var(--p5-red);
+    color: var(--p5-white);
+    padding: 2px 8px;
+    margin: 0 1px;
+    text-shadow: none;
+    box-shadow: 3px 3px 0 var(--p5-white);
+}
+
+/* 不同大小的字符 - 大 */
+.p5-char-lg {
+    font-size: 34px;
+    transform: rotate(-5deg) skew(-10deg) translateY(-4px);
+}
+
+/* 不同大小的字符 - 中 */
+.p5-char-md {
+    font-size: 28px;
+    transform: rotate(3deg) skew(-8deg) translateY(2px);
+}
+
+/* 不同大小的字符 - 小 */
+.p5-char-sm {
+    font-size: 24px;
+    transform: rotate(-2deg) skew(-6deg) translateY(4px);
 }
 
 .nav-buttons {
@@ -641,14 +679,34 @@ input {
 }
 
 .login-title {
-    font-size: var(--p5-font-size-xxl);
-    font-weight: bold;
-    color: var(--p5-white);
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0;
     text-transform: uppercase;
-    letter-spacing: 3px;
     margin-bottom: var(--p5-spacing-xl);
-    transform: skew(-10deg);
-    text-shadow: 4px 4px 0 var(--p5-red);
+}
+
+.login-title .p5-char {
+    text-shadow: 3px 3px 0 var(--p5-red);
+}
+
+.login-title .p5-char-inv {
+    text-shadow: none;
+}
+
+.login-title .p5-char-lg {
+    font-size: 48px;
+    transform: rotate(-6deg) skew(-12deg) translateY(-6px);
+}
+
+.login-title .p5-char-md {
+    font-size: 40px;
+    transform: rotate(4deg) skew(-8deg) translateY(3px);
+}
+
+.login-title .p5-char-sm {
+    font-size: 34px;
+    transform: rotate(-3deg) skew(-6deg) translateY(5px);
 }
 
 .login-form {
@@ -688,14 +746,34 @@ input {
    页面标题
    =================================== */
 .page-title {
-    font-size: var(--p5-font-size-xxl);
-    font-weight: bold;
-    color: var(--p5-white);
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0;
     text-transform: uppercase;
-    letter-spacing: 3px;
     margin-bottom: var(--p5-spacing-xl);
-    transform: skew(-10deg);
-    text-shadow: 4px 4px 0 var(--p5-red);
+}
+
+.page-title .p5-char {
+    text-shadow: 3px 3px 0 var(--p5-red);
+}
+
+.page-title .p5-char-inv {
+    text-shadow: none;
+}
+
+.page-title .p5-char-lg {
+    font-size: 48px;
+    transform: rotate(-6deg) skew(-12deg) translateY(-6px);
+}
+
+.page-title .p5-char-md {
+    font-size: 40px;
+    transform: rotate(4deg) skew(-8deg) translateY(3px);
+}
+
+.page-title .p5-char-sm {
+    font-size: 34px;
+    transform: rotate(-3deg) skew(-6deg) translateY(5px);
 }
 
 /* ===================================
@@ -733,12 +811,36 @@ input {
 }
 
 .upload-title {
-    font-size: var(--p5-font-size-xl);
-    font-weight: bold;
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 0;
     text-transform: uppercase;
-    letter-spacing: 2px;
     margin-bottom: var(--p5-spacing-sm);
-    transform: skew(-10deg);
+    width: 100%;
+}
+
+.upload-title .p5-char {
+    text-shadow: 2px 2px 0 var(--p5-red);
+}
+
+.upload-title .p5-char-inv {
+    text-shadow: none;
+}
+
+.upload-title .p5-char-lg {
+    font-size: 28px;
+    transform: rotate(-4deg) skew(-10deg) translateY(-3px);
+}
+
+.upload-title .p5-char-md {
+    font-size: 24px;
+    transform: rotate(3deg) skew(-8deg) translateY(2px);
+}
+
+.upload-title .p5-char-sm {
+    font-size: 20px;
+    transform: rotate(-2deg) skew(-6deg) translateY(3px);
 }
 
 .upload-hint {
@@ -755,14 +857,36 @@ input {
 }
 
 .queue-title {
-    font-size: var(--p5-font-size-lg);
-    font-weight: bold;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0;
     text-transform: uppercase;
-    letter-spacing: 2px;
     margin-bottom: var(--p5-spacing-md);
-    transform: skew(-10deg);
     border-bottom: var(--p5-border-width) solid var(--p5-red);
     padding-bottom: var(--p5-spacing-sm);
+}
+
+.queue-title .p5-char {
+    text-shadow: 2px 2px 0 var(--p5-red);
+}
+
+.queue-title .p5-char-inv {
+    text-shadow: none;
+}
+
+.queue-title .p5-char-lg {
+    font-size: 26px;
+    transform: rotate(-4deg) skew(-10deg) translateY(-3px);
+}
+
+.queue-title .p5-char-md {
+    font-size: 22px;
+    transform: rotate(3deg) skew(-8deg) translateY(2px);
+}
+
+.queue-title .p5-char-sm {
+    font-size: 18px;
+    transform: rotate(-2deg) skew(-6deg) translateY(3px);
 }
 
 .queue-list {
