@@ -372,23 +372,34 @@ function initEventListeners() {
     document.querySelector('.logout-btn').addEventListener('click', logout);
     
     // 文件上传区域
-    const uploadZone = document.getElementById('upload-zone');
+    const uploadArea = document.getElementById('upload-zone').parentElement;
     const fileInput = document.getElementById('file-input');
     
-    uploadZone.addEventListener('click', () => fileInput.click());
+    uploadArea.addEventListener('click', () => fileInput.click());
     
-    uploadZone.addEventListener('dragover', (e) => {
+    // 阻止浏览器默认拖拽行为
+    uploadArea.addEventListener('dragenter', (e) => {
         e.preventDefault();
-        uploadZone.classList.add('dragover');
+        e.stopPropagation();
+        uploadArea.classList.add('dragover');
     });
     
-    uploadZone.addEventListener('dragleave', () => {
-        uploadZone.classList.remove('dragover');
+    uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        uploadArea.classList.add('dragover');
     });
     
-    uploadZone.addEventListener('drop', (e) => {
+    uploadArea.addEventListener('dragleave', (e) => {
         e.preventDefault();
-        uploadZone.classList.remove('dragover');
+        e.stopPropagation();
+        uploadArea.classList.remove('dragover');
+    });
+    
+    uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        uploadArea.classList.remove('dragover');
         const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
         if (files.length > 0) {
             addToQueue(files);

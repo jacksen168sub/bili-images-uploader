@@ -796,6 +796,15 @@ input {
     align-items: center;
     transition: all var(--p5-transition-fast);
     cursor: pointer;
+    position: relative;
+}
+
+.upload-zone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
 }
 
 .upload-area:hover {
@@ -806,8 +815,12 @@ input {
 
 .upload-area.dragover {
     border-color: var(--p5-red);
-    background-color: var(--p5-red);
-    color: var(--p5-black);
+    background-color: var(--p5-medium-gray);
+    box-shadow: 5px 5px 0 var(--p5-red-dark);
+}
+
+.upload-area.dragover .p5-char-inv {
+    box-shadow: 3px 3px 0 var(--p5-red);
 }
 
 .upload-title {
