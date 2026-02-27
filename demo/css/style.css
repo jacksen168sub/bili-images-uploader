@@ -54,6 +54,11 @@ body {
     font-family: var(--p5-font-family);
     font-size: var(--p5-font-size-base);
     background-color: var(--p5-black);
+    background-image: 
+        radial-gradient(circle, #0f0000 6px, transparent 6px),
+        radial-gradient(circle, #0f0000 6px, transparent 6px);
+    background-size: 30px 25px;
+    background-position: 0 0, 15px 15px;
     color: var(--p5-white);
     line-height: 1.6;
     min-height: 100vh;
@@ -789,7 +794,7 @@ input {
     background-color: var(--p5-dark-gray);
     border: var(--p5-border-width) dashed var(--p5-white);
     padding: var(--p5-spacing-xl);
-    min-height: 200px;
+    min-height: 400px;
     display: flex;
     flex-direction: column;
     justify-content: center;
