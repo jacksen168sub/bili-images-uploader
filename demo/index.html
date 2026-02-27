@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="no-referrer" />
     <title>B站图片上传器</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
@@ -79,6 +80,7 @@
                                     <th>文件名</th>
                                     <th>大小</th>
                                     <th>状态</th>
+                                    <th>操作</th>
                                 </tr>
                             </thead>
                             <tbody id="history-table-body"></tbody>
@@ -157,6 +159,25 @@
 
         <!-- 通知提示 -->
         <div id="toast" class="p5-toast hidden"></div>
+
+        <!-- 图片预览模态框 -->
+        <div id="image-modal" class="p5-modal hidden">
+            <div class="p5-modal-mask"></div>
+            <div class="p5-modal-container">
+                <div class="p5-modal-content">
+                    <img id="modal-image" src="" alt="图片预览" class="p5-modal-image">
+                </div>
+                <div class="p5-modal-footer">
+                    <button id="modal-close" class="p5-button p5-button-primary">
+                        <svg class="button-svg" viewBox="0 0 100 50" preserveAspectRatio="none">
+                            <polygon class="red" points="10,20 80,20 80,30, 20,30"></polygon>
+                            <polygon class="blue" points="30,10 90,30 100,35, 20,50"></polygon>
+                        </svg>
+                        确定
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="js/snap.svg-min.js"></script>

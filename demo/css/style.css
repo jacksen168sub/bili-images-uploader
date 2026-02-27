@@ -482,6 +482,116 @@ input {
 }
 
 /* ===================================
+   P5 模态框组件
+   =================================== */
+.p5-modal.hidden {
+    display: none !important;
+}
+
+.p5-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.p5-modal-mask {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.85);
+    cursor: pointer;
+}
+
+.p5-modal-container {
+    position: relative;
+    z-index: 1;
+    background-color: var(--p5-black);
+    border: var(--p5-border-width) solid var(--p5-white);
+    box-shadow: 8px 8px 0 var(--p5-red);
+    transform: skew(-5deg);
+    max-width: 90vw;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+.p5-modal-content {
+    padding: var(--p5-spacing-lg);
+    overflow: auto;
+    max-height: calc(90vh - 80px);
+}
+
+.p5-modal-image {
+    max-width: 100%;
+    max-height: 80vh;
+    display: block;
+    border: var(--p5-border-width) solid var(--p5-light-gray);
+}
+
+.p5-modal-footer {
+    padding: var(--p5-spacing-md);
+    border-top: var(--p5-border-width) solid var(--p5-red);
+    display: flex;
+    justify-content: flex-end;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: skew(-5deg) scale(0.8) translateY(-50px);
+    }
+    to {
+        opacity: 1;
+        transform: skew(-5deg) scale(1) translateY(0);
+    }
+}
+
+/* ===================================
+   操作按钮样式
+   =================================== */
+.action-buttons {
+    display: flex;
+    gap: var(--p5-spacing-sm);
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.action-btn {
+    font-size: var(--p5-font-size-sm);
+    padding: var(--p5-spacing-xs) var(--p5-spacing-sm);
+    min-width: 60px;
+}
+
+.action-btn:before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+}
+
+.action-btn:hover:before {
+    background: #ffffff;
+    animation: bgGray 1s ease-out infinite;
+}
+
+.action-btn:hover {
+    border-color: var(--p5-blue);
+    box-shadow: 2px 2px 0 var(--p5-blue);
+}
+
+/* ===================================
    页面容器
    =================================== */
 #pages-container {

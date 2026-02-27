@@ -240,7 +240,8 @@ function loadMockHistory() {
             size: Math.floor(Math.random() * 5000000) + 100000,
             status: status,
             time: new Date(now - i * 86400000).toISOString(),
-            url: `https://example.com/image_${i + 1}.jpg`
+            httpUrl: `http://example.com/image_${i + 1}.jpg`,
+            httpsUrl: `https://example.com/image_${i + 1}.jpg`
         });
     }
     
@@ -250,19 +251,34 @@ function loadMockHistory() {
 function addToHistory(item) {
     state.history.unshift({
         id: Date.now(),
+        httpUrl: item.httpUrl || '',
+        httpsUrl: item.httpsUrl || '',
         ...item
     });
 }
 
 function renderHistory() {
     const tbody = document.getElementById('history-table-body');
-    
+
     tbody.innerHTML = state.history.map(item => `
         <tr>
             <td>${formatDateTime(item.time)}</td>
             <td>${item.name}</td>
             <td>${formatFileSize(item.size)}</td>
             <td><span class="p5-status ${item.status === 'success' ? 'p5-status-success' : 'p5-status-error'}">${item.status === 'success' ? '成功' : '失败'}</span></td>
+            <td>
+                <div class="action-buttons">
+                    <button class="p5-button action-btn" onclick="openImageModal(${item.id})">
+                        查看
+                    </button>
+                    <button class="p5-button action-btn" onclick="copyToClipboard('${item.httpUrl}', 'HTTP URL')">
+                        复制HTTP
+                    </button>
+                    <button class="p5-button action-btn" onclick="copyToClipboard('${item.httpsUrl}', 'HTTPS URL')">
+                        复制HTTPS
+                    </button>
+                </div>
+            </td>
         </tr>
     `).join('');
 }
@@ -313,7 +329,7 @@ function renderCheckTable() {
         <tr>
             <td>${formatDateTime(item.time)}</td>
             <td>${item.name}</td>
-            <td><a href="${item.url}" target="_blank">${item.url}</a></td>
+            <td><a href="${item.httpsUrl}" target="_blank" >${item.httpsUrl}</a></td>
             <td>
                 <span class="p5-status ${item.isValid !== false ? 'p5-status-success' : 'p5-status-error'}">
                     ${item.isValid === false ? '失效' : '有效'}
@@ -404,6 +420,16 @@ function initEventListeners() {
     
     // 开始检查按钮
     document.getElementById('start-check').addEventListener('click', startCheck);
+
+    // 模态框事件
+    document.getElementById('modal-close').addEventListener('click', closeImageModal);
+
+    // 点击遮罩关闭模态框（排除点击模态框容器本身的情况）
+    document.querySelector('.p5-modal-mask').addEventListener('click', (e) => {
+        if (e.target.classList.contains('p5-modal-mask')) {
+            closeImageModal();
+        }
+    });
 }
 
 // ===================================
@@ -449,6 +475,53 @@ function render() {
     } else {
         hideNavigation();
         navigateTo('login');
+    }
+}
+
+// ===================================
+// 模态框管理
+// ===================================
+function openImageModal(id) {
+    const item = state.history.find(h => h.id === id);
+    if (!item) return;
+
+    const modal = document.getElementById('image-modal');
+    const modalImage = document.getElementById('modal-image');
+
+    modalImage.src = item.httpsUrl;
+    modal.classList.remove('hidden');
+}
+
+function closeImageModal() {
+    const modal = document.getElementById('image-modal');
+    modal.classList.add('hidden');
+
+    // 清空图片源，避免下次打开时显示旧图片
+    document.getElementById('modal-image').src = '';
+}
+
+// ===================================
+// 剪贴板操作
+// ===================================
+async function copyToClipboard(text, label) {
+    try {
+        await navigator.clipboard.writeText(text);
+        showToast(`${label} 已复制到剪贴板`, 'success');
+    } catch (err) {
+        // 降级方案：使用传统方法
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+            document.execCommand('copy');
+            showToast(`${label} 已复制到剪贴板`, 'success');
+        } catch (e) {
+            showToast('复制失败，请手动复制', 'error');
+        }
+        document.body.removeChild(textarea);
     }
 }
 
