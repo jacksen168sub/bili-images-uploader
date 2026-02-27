@@ -1183,25 +1183,32 @@ input {
 }
 
 /* ===================================
-   配置页文档链接
+   配置页尾部
    =================================== */
-.config-doc-link {
+.config-footer {
     text-align: center;
     margin-bottom: 20px;
     padding-bottom: 20px;
     border-bottom: 1px solid var(--p5-light-gray);
 }
 
-.config-doc-link a {
+.config-footer a {
     color: var(--p5-red);
     text-decoration: none;
     font-size: var(--p5-font-size-sm);
     transition: all var(--p5-transition-fast);
 }
 
-.config-doc-link a:hover {
+.config-footer a:hover {
     color: var(--p5-white);
     text-decoration: underline;
+}
+
+.config-footer .version-label {
+    display: inline-block;
+    margin-top: 10px;
+    font-size: var(--p5-font-size-sm);
+    color: var(--p5-white);
 }
 
 /* ===================================

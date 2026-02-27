@@ -105,6 +105,25 @@ async def update_config(
     return {"success": True, "message": "配置已保存"}
 
 
+@app.get("/api/version")
+async def get_version():
+    """
+    获取构建版本信息
+    """
+    version = os.environ.get("BUILD_VERSION", "dev")
+    commit_sha = os.environ.get("BUILD_COMMIT_SHA", "")
+    commit_link = os.environ.get("BUILD_COMMIT_LINK", "")
+    
+    return {
+        "success": True,
+        "data": {
+            "version": version,
+            "commitSha": commit_sha,
+            "commitLink": commit_link
+        }
+    }
+
+
 @app.post("/api/upload")
 async def upload_images(
     files: List[UploadFile] = File(...),

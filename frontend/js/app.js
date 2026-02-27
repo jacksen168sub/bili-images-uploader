@@ -191,6 +191,36 @@ async function loadConfigFromServer() {
         document.getElementById('config-sessdata').value = state.config.biliSessdata;
         document.getElementById('config-oid').value = state.config.biliOid;
     }
+    
+    // 加载版本信息
+    loadVersionInfo();
+}
+
+async function loadVersionInfo() {
+    try {
+        const result = await apiRequest('/version');
+        const versionLink = document.getElementById('version-link');
+        
+        if (result && result.success && result.data) {
+            const { version, commitSha, commitLink } = result.data;
+            
+            if (commitSha && commitLink) {
+                versionLink.href = commitLink;
+                versionLink.textContent = commitSha.substring(0, 7);
+            } else if (version) {
+                versionLink.textContent = version;
+                versionLink.removeAttribute('href');
+                versionLink.style.cursor = 'default';
+            } else {
+                versionLink.textContent = 'dev';
+                versionLink.removeAttribute('href');
+                versionLink.style.cursor = 'default';
+            }
+        }
+    } catch (error) {
+        console.error('加载版本信息失败:', error);
+        document.getElementById('version-link').textContent = 'dev';
+    }
 }
 
 async function saveConfigToServer() {

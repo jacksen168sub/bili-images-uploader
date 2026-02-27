@@ -1,0 +1,49 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md
+LICENSE
+
+# Demo files
+demo/
+demo.php
+
+# Development files
+.github/
+.vscode/
+.idea/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Node modules (if any)
+node_modules/
+
+# Environment files
+.env
+.env.*
+*.local
+
+# Test files
+tests/
+*.test.*
+.pytest_cache/
+.coverage
+
+# Data files (mounted as volumes)
+data/
+config/
+
+# Logs
+*.log
+logs/
