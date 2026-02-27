@@ -1,12 +1,14 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="referrer" content="no-referrer" />
     <title>Bili images uploader</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="/static/css/style.css">
 </head>
+
 <body>
     <!-- 主容器 -->
     <div id="app">
@@ -14,7 +16,10 @@
         <nav id="main-nav" class="hidden">
             <div class="nav-container">
                 <h1 class="app-title">
-                    <span class="p5-char p5-char-inv">b</span><span class="p5-char">ili</span><span class="p5-char"> </span><span class="p5-char p5-char-inv">i</span><span class="p5-char">mages</span><span class="p5-char"> </span><span class="p5-char p5-char-inv">u</span><span class="p5-char">ploader</span>
+                    <span class="p5-char p5-char-inv">b</span><span class="p5-char">ili</span><span class="p5-char">
+                    </span><span class="p5-char p5-char-inv">i</span><span class="p5-char">mages</span><span
+                        class="p5-char"> </span><span class="p5-char p5-char-inv">u</span><span
+                        class="p5-char">ploader</span>
                 </h1>
                 <div class="nav-buttons">
                     <button class="nav-btn active" data-page="upload">上传</button>
@@ -32,17 +37,19 @@
             <section id="page-login" class="page active">
                 <div class="login-container">
                     <h2 class="login-title">
-                        <span class="p5-char p5-char-md">访</span><span class="p5-char p5-char-inv">问</span><span class="p5-char p5-char-lg">令</span><span class="p5-char p5-char-sm">牌</span>
+                        <span class="p5-char p5-char-md">访</span><span class="p5-char p5-char-inv">问</span><span
+                            class="p5-char p5-char-lg">令</span><span class="p5-char p5-char-sm">牌</span>
                     </h2>
                     <form id="login-form" class="login-form">
-                        <input type="password" id="token-input" class="p5-input login-input" placeholder="请输入Token" maxlength="32" autocomplete="off">
+                        <input type="password" id="token-input" class="p5-input login-input" placeholder="请输入Token"
+                            maxlength="32" autocomplete="off">
                         <button type="submit" class="p5-button p5-button-primary login-button">
-                    <svg class="button-svg" viewBox="0 0 100 50" preserveAspectRatio="none">
-                        <polygon class="red" points="10,20 80,20 80,30, 20,30"></polygon>
-                        <polygon class="blue" points="30,10 90,30 100,35, 20,50"></polygon>
-                    </svg>
-                    进入
-                </button>
+                            <svg class="button-svg" viewBox="0 0 100 50" preserveAspectRatio="none">
+                                <polygon class="red" points="10,20 80,20 80,30, 20,30"></polygon>
+                                <polygon class="blue" points="30,10 90,30 100,35, 20,50"></polygon>
+                            </svg>
+                            进入
+                        </button>
                     </form>
                     <div id="login-error" class="login-error hidden"></div>
                 </div>
@@ -54,20 +61,24 @@
                     <div class="upload-area">
                         <input type="file" id="file-input" class="hidden" multiple accept="image/*">
                         <div class="upload-zone" id="upload-zone">
-                            <h3 class="upload-title"><span class="p5-char p5-char-sm">选</span><span class="p5-char p5-char-inv">择</span><span class="p5-char p5-char-lg">图</span><span class="p5-char p5-char-md">片</span></h3>
+                            <h3 class="upload-title"><span class="p5-char p5-char-sm">选</span><span
+                                    class="p5-char p5-char-inv">择</span><span class="p5-char p5-char-lg">图</span><span
+                                    class="p5-char p5-char-md">片</span></h3>
                             <p class="upload-hint">点击或拖拽图片到此处</p>
                         </div>
                     </div>
                     <div class="upload-queue">
-                        <h3 class="queue-title"><span class="p5-char p5-char-inv">上</span><span class="p5-char p5-char-md">传</span><span class="p5-char p5-char-lg">队</span><span class="p5-char p5-char-sm">列</span></h3>
+                        <h3 class="queue-title"><span class="p5-char p5-char-inv">上</span><span
+                                class="p5-char p5-char-md">传</span><span class="p5-char p5-char-lg">队</span><span
+                                class="p5-char p5-char-sm">列</span></h3>
                         <div id="queue-list" class="queue-list"></div>
                         <button id="start-upload" class="p5-button p5-button-primary upload-btn">
-                        <svg class="button-svg" viewBox="0 0 100 50" preserveAspectRatio="none">
-                            <polygon class="red" points="10,20 80,20 80,30, 20,30"></polygon>
-                            <polygon class="blue" points="30,10 90,30 100,35, 20,50"></polygon>
-                        </svg>
-                        开始上传
-                    </button>
+                            <svg class="button-svg" viewBox="0 0 100 50" preserveAspectRatio="none">
+                                <polygon class="red" points="10,20 80,20 80,30, 20,30"></polygon>
+                                <polygon class="blue" points="30,10 90,30 100,35, 20,50"></polygon>
+                            </svg>
+                            开始上传
+                        </button>
                     </div>
                 </div>
             </section>
@@ -76,7 +87,8 @@
             <section id="page-history" class="page hidden">
                 <div class="history-container">
                     <h2 class="page-title">
-                        <span class="p5-char p5-char-inv">上</span><span class="p5-char p5-char-lg">传</span><span class="p5-char p5-char-sm">历</span><span class="p5-char p5-char-md">史</span>
+                        <span class="p5-char p5-char-inv">上</span><span class="p5-char p5-char-lg">传</span><span
+                            class="p5-char p5-char-sm">历</span><span class="p5-char p5-char-md">史</span>
                     </h2>
                     <div class="table-container">
                         <table class="p5-table">
@@ -99,16 +111,17 @@
             <section id="page-check" class="page hidden">
                 <div class="check-container">
                     <h2 class="page-title">
-                        <span class="p5-char p5-char-lg">失</span><span class="p5-char p5-char-inv">效</span><span class="p5-char p5-char-md">检</span><span class="p5-char p5-char-sm">查</span>
+                        <span class="p5-char p5-char-lg">失</span><span class="p5-char p5-char-inv">效</span><span
+                            class="p5-char p5-char-md">检</span><span class="p5-char p5-char-sm">查</span>
                     </h2>
                     <div class="check-actions">
                         <button id="start-check" class="p5-button p5-button-primary">
-                        <svg class="button-svg" viewBox="0 0 100 50" preserveAspectRatio="none">
-                            <polygon class="red" points="10,20 80,20 80,30, 20,30"></polygon>
-                            <polygon class="blue" points="30,10 90,30 100,35, 20,50"></polygon>
-                        </svg>
-                        开始检查
-                    </button>
+                            <svg class="button-svg" viewBox="0 0 100 50" preserveAspectRatio="none">
+                                <polygon class="red" points="10,20 80,20 80,30, 20,30"></polygon>
+                                <polygon class="blue" points="30,10 90,30 100,35, 20,50"></polygon>
+                            </svg>
+                            开始检查
+                        </button>
                     </div>
                     <div class="check-progress hidden" id="check-progress">
                         <div class="progress-bar">
@@ -136,7 +149,8 @@
             <section id="page-config" class="page hidden">
                 <div class="config-container">
                     <h2 class="page-title">
-                        <span class="p5-char p5-char-sm">系</span><span class="p5-char p5-char-md">统</span><span class="p5-char p5-char-inv">配</span><span class="p5-char p5-char-lg">置</span>
+                        <span class="p5-char p5-char-sm">系</span><span class="p5-char p5-char-md">统</span><span
+                            class="p5-char p5-char-inv">配</span><span class="p5-char p5-char-lg">置</span>
                     </h2>
                     <form id="config-form" class="config-form">
                         <div class="form-group">
@@ -151,17 +165,17 @@
                             <label class="p5-label">B站 OID</label>
                             <input type="text" id="config-oid" class="p5-input" placeholder="请输入biliOid">
                         </div>
-                        <div class="form-group">
-                            <label class="p5-label">访问令牌</label>
-                            <input type="text" id="config-token" class="p5-input" placeholder="请输入Token" maxlength="32">
+                        <div class="config-doc-link">
+                            <a href="https://github.com/jacksen168sub/bili-images-uploader/wiki" target="_blank"
+                                rel="noopener noreferrer">配置说明文档</a>
                         </div>
                         <button type="submit" class="p5-button p5-button-primary">
-                        <svg class="button-svg" viewBox="0 0 100 50" preserveAspectRatio="none">
-                            <polygon class="red" points="10,20 80,20 80,30, 20,30"></polygon>
-                            <polygon class="blue" points="30,10 90,30 100,35, 20,50"></polygon>
-                        </svg>
-                        保存配置
-                    </button>
+                            <svg class="button-svg" viewBox="0 0 100 50" preserveAspectRatio="none">
+                                <polygon class="red" points="10,20 80,20 80,30, 20,30"></polygon>
+                                <polygon class="blue" points="30,10 90,30 100,35, 20,50"></polygon>
+                            </svg>
+                            保存配置
+                        </button>
                     </form>
                 </div>
             </section>
@@ -190,7 +204,8 @@
         </div>
     </div>
 
-    <script src="js/snap.svg-min.js"></script>
-    <script src="js/app.js"></script>
+    <script src="/static/js/snap.svg-min.js"></script>
+    <script src="/static/js/app.js"></script>
 </body>
+
 </html>

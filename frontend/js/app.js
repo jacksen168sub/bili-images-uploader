@@ -2,8 +2,8 @@
 // B站图片上传器 - SPA应用
 // ===================================
 
-// 模拟Token
-const VALID_TOKEN = 'TESTTOKEN1234567890ABCDEFGHIJKL';
+// API基础URL
+const API_BASE = '/api';
 
 // 全局状态
 const state = {
@@ -12,8 +12,7 @@ const state = {
     config: {
         biliCsrf: '',
         biliSessdata: '',
-        biliOid: '',
-        token: ''
+        biliOid: ''
     },
     uploadQueue: [],
     history: [],
@@ -27,37 +26,85 @@ document.addEventListener('DOMContentLoaded', () => {
     initApp();
 });
 
-function initApp() {
-    // 检查登录状态
-    checkAuth();
-    
-    // 初始化配置
-    loadConfig();
-    
-    // 加载模拟历史数据
-    loadMockHistory();
-    
+async function initApp() {
     // 初始化事件监听
     initEventListeners();
+    
+    // 检查登录状态（等待完成）
+    await checkAuth();
     
     // 渲染页面
     render();
 }
 
 // ===================================
-// 认证管理
+// API请求封装
 // ===================================
-function checkAuth() {
-    const savedToken = localStorage.getItem('token');
-    if (savedToken === VALID_TOKEN) {
-        state.isAuthenticated = true;
-        state.token = savedToken;
-        showNavigation();
+async function apiRequest(endpoint, options = {}) {
+    const url = `${API_BASE}${endpoint}`;
+    const headers = {
+        ...options.headers
+    };
+    
+    // 添加Token认证
+    if (state.token) {
+        headers['Authorization'] = `Bearer ${state.token}`;
+    }
+    
+    try {
+        const response = await fetch(url, {
+            ...options,
+            headers
+        });
+        
+        const data = await response.json();
+        
+        if (response.status === 401) {
+            // Token失效，清除登录状态
+            logout();
+            showToast('登录已失效，请重新登录', 'error');
+            return null;
+        }
+        
+        return data;
+    } catch (error) {
+        console.error('API请求失败:', error);
+        showToast('网络请求失败', 'error');
+        return null;
     }
 }
 
-function login(token) {
-    if (token === VALID_TOKEN) {
+// ===================================
+// 认证管理
+// ===================================
+async function checkAuth() {
+    const savedToken = localStorage.getItem('token');
+    if (savedToken) {
+        // 验证Token是否有效
+        const result = await apiRequest('/auth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: savedToken })
+        });
+        
+        if (result && result.success) {
+            state.isAuthenticated = true;
+            state.token = savedToken;
+            showNavigation();
+        } else {
+            localStorage.removeItem('token');
+        }
+    }
+}
+
+async function login(token) {
+    const result = await apiRequest('/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+    });
+    
+    if (result && result.success) {
         state.isAuthenticated = true;
         state.token = token;
         localStorage.setItem('token', token);
@@ -91,6 +138,11 @@ function hideNavigation() {
 }
 
 function navigateTo(page) {
+    // 重置检查页进度条
+    document.getElementById('check-progress').classList.add('hidden');
+    document.getElementById('check-progress-fill').style.width = '0%';
+    document.getElementById('check-progress-text').textContent = '0%';
+    
     // 隐藏所有页面
     document.querySelectorAll('.page').forEach(p => {
         p.classList.remove('active');
@@ -112,59 +164,103 @@ function navigateTo(page) {
     
     // 特定页面初始化
     if (page === 'history') {
-        renderHistory();
+        loadHistory();
     } else if (page === 'check') {
-        renderCheckTable();
+        loadUrlsForCheck();
     } else if (page === 'upload') {
         renderUploadQueue();
     } else if (page === 'config') {
-        loadConfigToForm();
+        loadConfigFromServer();
     }
 }
 
 // ===================================
 // 配置管理
 // ===================================
-function loadConfig() {
-    const savedConfig = localStorage.getItem('config');
-    if (savedConfig) {
-        state.config = JSON.parse(savedConfig);
+async function loadConfigFromServer() {
+    const result = await apiRequest('/config');
+    
+    if (result && result.success) {
+        state.config = {
+            biliCsrf: result.data.csrf || '',
+            biliSessdata: result.data.sessdata || '',
+            biliOid: result.data.oid || ''
+        };
+        
+        document.getElementById('config-csrf').value = state.config.biliCsrf;
+        document.getElementById('config-sessdata').value = state.config.biliSessdata;
+        document.getElementById('config-oid').value = state.config.biliOid;
     }
 }
 
-function saveConfig() {
-    localStorage.setItem('config', JSON.stringify(state.config));
-    showToast('配置已保存', 'success');
-}
-
-function loadConfigToForm() {
-    document.getElementById('config-csrf').value = state.config.biliCsrf;
-    document.getElementById('config-sessdata').value = state.config.biliSessdata;
-    document.getElementById('config-oid').value = state.config.biliOid;
-    document.getElementById('config-token').value = state.config.token;
+async function saveConfigToServer() {
+    const config = {
+        csrf: document.getElementById('config-csrf').value.trim(),
+        sessdata: document.getElementById('config-sessdata').value.trim(),
+        oid: document.getElementById('config-oid').value.trim()
+    };
+    
+    const result = await apiRequest('/config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config)
+    });
+    
+    if (result && result.success) {
+        state.config = config;
+        showToast('配置已保存', 'success');
+    } else {
+        showToast(result?.detail || '保存失败', 'error');
+    }
 }
 
 // ===================================
 // 上传队列管理
 // ===================================
 function addToQueue(files) {
+    // 只清理已完成和失败的项，保留正在上传和等待上传的项
+    state.uploadQueue = state.uploadQueue.filter(item => 
+        item.status === 'uploading' || item.status === 'pending'
+    );
+    
     files.forEach(file => {
         const queueItem = {
             id: Date.now() + Math.random(),
             name: file.name,
             size: file.size,
             file: file,
-            status: 'pending' // pending, uploading, completed, error
+            status: 'pending',
+            httpUrl: null,
+            httpsUrl: null,
+            error: null,
+            isNew: true  // 标记为新添加
         };
         state.uploadQueue.push(queueItem);
     });
     renderUploadQueue();
+    
+    // 动画完成后移除isNew标记
+    setTimeout(() => {
+        state.uploadQueue.forEach(item => item.isNew = false);
+    }, 300);
+    
     showToast(`已添加 ${files.length} 个文件到队列`, 'info');
 }
 
 function removeFromQueue(id) {
-    state.uploadQueue = state.uploadQueue.filter(item => item.id !== id);
-    renderUploadQueue();
+    // 先找到DOM元素并添加动画类
+    const queueItem = document.querySelector(`.queue-item[data-id="${id}"]`);
+    if (queueItem) {
+        queueItem.classList.add('removing');
+        // 等待动画完成后再从状态中移除
+        setTimeout(() => {
+            state.uploadQueue = state.uploadQueue.filter(item => item.id !== id);
+            renderUploadQueue();
+        }, 300);
+    } else {
+        state.uploadQueue = state.uploadQueue.filter(item => item.id !== id);
+        renderUploadQueue();
+    }
 }
 
 function renderUploadQueue() {
@@ -175,108 +271,156 @@ function renderUploadQueue() {
         return;
     }
     
-    queueList.innerHTML = state.uploadQueue.map(item => `
-        <div class="queue-item" data-id="${item.id}">
-            <div class="queue-item-info">
-                <div class="queue-item-name">${item.name}</div>
-                <div class="queue-item-size">${formatFileSize(item.size)}</div>
+    queueList.innerHTML = state.uploadQueue.map(item => {
+        let statusText = '';
+        let statusClass = '';
+        
+        switch(item.status) {
+            case 'pending':
+                statusText = '等待上传';
+                statusClass = 'status-pending';
+                break;
+            case 'uploading':
+                statusText = '上传中...';
+                statusClass = 'status-uploading';
+                break;
+            case 'completed':
+                statusText = item.url || '已完成';
+                statusClass = 'status-completed';
+                break;
+            case 'error':
+                statusText = item.error || '上传失败';
+                statusClass = 'status-error';
+                break;
+        }
+        
+        return `
+            <div class="queue-item ${statusClass} ${item.isNew ? 'new-item' : ''}" data-id="${item.id}">
+                <div class="queue-item-info">
+                    <div class="queue-item-name">${item.name}</div>
+                    <div class="queue-item-size">${formatFileSize(item.size)}</div>
+                    <div class="queue-item-status">${statusText}</div>
+                </div>
+                <div class="queue-item-actions">
+                    ${item.status === 'pending' ? `<button class="p5-button action-btn queue-item-delete" onclick="removeFromQueue(${item.id})">删除</button>` : ''}
+                    ${item.httpsUrl ? `
+                        <button class="p5-button action-btn queue-item-copy" onclick="copyToClipboard('${item.httpsUrl}', 'HTTPS URL')">复制URL</button>
+                    ` : ''}
+                </div>
             </div>
-            <div class="queue-item-actions">
-                <button class="queue-item-delete" onclick="removeFromQueue(${item.id})">删除</button>
-            </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 // ===================================
-// 模拟上传
+// 上传功能
 // ===================================
 async function startUpload() {
-    if (state.uploadQueue.length === 0) {
-        showToast('队列为空，请先添加文件', 'warning');
+    const pendingItems = state.uploadQueue.filter(item => item.status === 'pending');
+    
+    if (pendingItems.length === 0) {
+        showToast('没有待上传的文件', 'warning');
         return;
     }
     
     showToast('开始上传...', 'info');
     
-    for (let i = 0; i < state.uploadQueue.length; i++) {
-        const item = state.uploadQueue[i];
+    for (const item of pendingItems) {
         item.status = 'uploading';
         renderUploadQueue();
         
-        // 模拟上传延迟
-        await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
+        // 创建FormData
+        const formData = new FormData();
+        formData.append('files', item.file);
         
-        // 模拟成功
-        item.status = 'completed';
+        try {
+            const response = await fetch(`${API_BASE}/upload`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${state.token}`
+                },
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (result.success && result.results && result.results.length > 0) {
+                const uploadResult = result.results[0];
+                
+                if (uploadResult.success) {
+                    item.status = 'completed';
+                    item.httpUrl = uploadResult.httpUrl;
+                    item.httpsUrl = uploadResult.httpsUrl;
+                    
+                    if (uploadResult.warning) {
+                        showToast(uploadResult.warning, 'warning');
+                    }
+                } else {
+                    item.status = 'error';
+                    item.error = uploadResult.error;
+                }
+            } else {
+                item.status = 'error';
+                item.error = result.detail || '上传失败';
+            }
+        } catch (error) {
+            item.status = 'error';
+            item.error = '网络错误';
+        }
         
-        // 添加到历史记录
-        addToHistory({
-            name: item.name,
-            size: item.size,
-            status: 'success',
-            time: new Date().toISOString()
-        });
+        renderUploadQueue();
     }
     
-    // 清空队列
-    state.uploadQueue = [];
-    renderUploadQueue();
-    showToast('所有文件上传完成', 'success');
+    // 显示完成提示
+    const completed = state.uploadQueue.filter(item => item.status === 'completed').length;
+    const failed = state.uploadQueue.filter(item => item.status === 'error').length;
+    
+    if (failed === 0) {
+        showToast(`所有文件上传完成 (${completed}个)`, 'success');
+    } else {
+        showToast(`上传完成: 成功${completed}个, 失败${failed}个`, 'warning');
+    }
 }
 
 // ===================================
 // 历史记录管理
 // ===================================
-function loadMockHistory() {
-    const mockHistory = [];
-    const now = Date.now();
+async function loadHistory() {
+    const result = await apiRequest('/history');
     
-    for (let i = 0; i < 15; i++) {
-        const status = Math.random() > 0.1 ? 'success' : 'error';
-        mockHistory.push({
-            id: i,
-            name: `image_${i + 1}.jpg`,
-            size: Math.floor(Math.random() * 5000000) + 100000,
-            status: status,
-            time: new Date(now - i * 86400000).toISOString(),
-            httpUrl: `http://example.com/image_${i + 1}.jpg`,
-            httpsUrl: `https://example.com/image_${i + 1}.jpg`
-        });
+    if (result && result.success) {
+        state.history = result.data || [];
+        renderHistory();
     }
-    
-    state.history = mockHistory;
-}
-
-function addToHistory(item) {
-    state.history.unshift({
-        id: Date.now(),
-        httpUrl: item.httpUrl || '',
-        httpsUrl: item.httpsUrl || '',
-        ...item
-    });
 }
 
 function renderHistory() {
     const tbody = document.getElementById('history-table-body');
-
+    
+    if (state.history.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--p5-light-gray);">暂无历史记录</td></tr>';
+        return;
+    }
+    
     tbody.innerHTML = state.history.map(item => `
         <tr>
-            <td>${formatDateTime(item.time)}</td>
-            <td>${item.name}</td>
-            <td>${formatFileSize(item.size)}</td>
+            <td>${formatDateTime(item.uploadTime)}</td>
+            <td>${item.filename}</td>
+            <td>${formatFileSize(item.fileSize)}</td>
             <td><span class="p5-status ${item.status === 'success' ? 'p5-status-success' : 'p5-status-error'}">${item.status === 'success' ? '成功' : '失败'}</span></td>
             <td>
                 <div class="action-buttons">
-                    <button class="p5-button action-btn" onclick="openImageModal(${item.id})">
-                        查看
-                    </button>
-                    <button class="p5-button action-btn" onclick="copyToClipboard('${item.httpUrl}', 'HTTP URL')">
-                        复制HTTP
-                    </button>
-                    <button class="p5-button action-btn" onclick="copyToClipboard('${item.httpsUrl}', 'HTTPS URL')">
-                        复制HTTPS
-                    </button>
+                    ${item.httpsUrl ? `
+                        <button class="p5-button action-btn" onclick="openImageModal('${item.httpsUrl}')">
+                            查看
+                        </button>
+                        <button class="p5-button action-btn" onclick="copyToClipboard('${item.httpUrl}', 'HTTP URL')">
+                            复制HTTP
+                        </button>
+                        <button class="p5-button action-btn" onclick="copyToClipboard('${item.httpsUrl}', 'HTTPS URL')">
+                            复制HTTPS
+                        </button>
+                    ` : '-'}
                 </div>
             </td>
         </tr>
@@ -286,9 +430,23 @@ function renderHistory() {
 // ===================================
 // 失效检查
 // ===================================
+async function loadUrlsForCheck() {
+    const result = await apiRequest('/urls');
+    
+    if (result && result.success) {
+        state.history = result.data || [];
+        renderCheckTable();
+    }
+}
+
 async function startCheck() {
     if (state.isChecking) {
         showToast('检查正在进行中', 'warning');
+        return;
+    }
+    
+    if (state.history.length === 0) {
+        showToast('没有需要检查的图片', 'warning');
         return;
     }
     
@@ -300,21 +458,29 @@ async function startCheck() {
     const total = state.history.length;
     let checked = 0;
     
-    for (let i = 0; i < state.history.length; i++) {
-        // 模拟检查延迟
-        await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 500));
-        
-        // 随机设置失效状态
-        state.history[i].isValid = Math.random() > 0.2;
+    for (const item of state.history) {
+        try {
+            // 前端直接请求图片URL检查有效性
+            const response = await fetch(item.httpsUrl, { 
+                method: 'HEAD',
+                mode: 'no-cors' // 跨域情况下只能判断是否抛出错误
+            });
+            // no-cors模式下response.ok不可用，只能假设不抛错就是成功
+            item.isValid = true;
+        } catch (error) {
+            item.isValid = false;
+        }
         
         checked++;
         const progress = Math.round((checked / total) * 100);
         progressFill.style.width = `${progress}%`;
         progressText.textContent = `${progress}%`;
+        
+        // 实时更新表格
+        renderCheckTable();
     }
     
     state.isChecking = false;
-    renderCheckTable();
     showToast('检查完成', 'success');
     
     setTimeout(() => {
@@ -325,18 +491,30 @@ async function startCheck() {
 function renderCheckTable() {
     const tbody = document.getElementById('check-table-body');
     
-    tbody.innerHTML = state.history.map(item => `
-        <tr>
-            <td>${formatDateTime(item.time)}</td>
-            <td>${item.name}</td>
-            <td><a href="${item.httpsUrl}" target="_blank" >${item.httpsUrl}</a></td>
-            <td>
-                <span class="p5-status ${item.isValid !== false ? 'p5-status-success' : 'p5-status-error'}">
-                    ${item.isValid === false ? '失效' : '有效'}
-                </span>
-            </td>
-        </tr>
-    `).join('');
+    if (state.history.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--p5-light-gray);">暂无历史记录</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = state.history.map(item => {
+        let statusHtml = '';
+        if (item.isValid === true) {
+            statusHtml = '<span class="p5-status p5-status-success">有效</span>';
+        } else if (item.isValid === false) {
+            statusHtml = '<span class="p5-status p5-status-error">失效</span>';
+        } else {
+            statusHtml = '<span class="p5-status">未知</span>';
+        }
+        
+        return `
+            <tr>
+                <td>${formatDateTime(item.uploadTime)}</td>
+                <td>${item.filename}</td>
+                <td><a href="${item.httpsUrl}" target="_blank" rel="noopener noreferrer">${item.httpsUrl}</a></td>
+                <td>${statusHtml}</td>
+            </tr>
+        `;
+    }).join('');
 }
 
 // ===================================
@@ -344,12 +522,20 @@ function renderCheckTable() {
 // ===================================
 function initEventListeners() {
     // 登录表单
-    document.getElementById('login-form').addEventListener('submit', (e) => {
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const token = document.getElementById('token-input').value.trim();
         const loginError = document.getElementById('login-error');
         
-        if (login(token)) {
+        if (!token) {
+            loginError.textContent = '请输入Token';
+            loginError.classList.remove('hidden');
+            return;
+        }
+        
+        const success = await login(token);
+        
+        if (success) {
             loginError.classList.add('hidden');
             document.getElementById('token-input').value = '';
         } else {
@@ -420,13 +606,9 @@ function initEventListeners() {
     document.getElementById('start-upload').addEventListener('click', startUpload);
     
     // 配置表单
-    document.getElementById('config-form').addEventListener('submit', (e) => {
+    document.getElementById('config-form').addEventListener('submit', async (e) => {
         e.preventDefault();
-        state.config.biliCsrf = document.getElementById('config-csrf').value.trim();
-        state.config.biliSessdata = document.getElementById('config-sessdata').value.trim();
-        state.config.biliOid = document.getElementById('config-oid').value.trim();
-        state.config.token = document.getElementById('config-token').value.trim();
-        saveConfig();
+        await saveConfigToServer();
     });
     
     // 开始检查按钮
@@ -435,7 +617,7 @@ function initEventListeners() {
     // 模态框事件
     document.getElementById('modal-close').addEventListener('click', closeImageModal);
 
-    // 点击遮罩关闭模态框（排除点击模态框容器本身的情况）
+    // 点击遮罩关闭模态框
     document.querySelector('.p5-modal-mask').addEventListener('click', (e) => {
         if (e.target.classList.contains('p5-modal-mask')) {
             closeImageModal();
@@ -455,6 +637,7 @@ function formatFileSize(bytes) {
 }
 
 function formatDateTime(isoString) {
+    if (!isoString) return '-';
     const date = new Date(isoString);
     return date.toLocaleString('zh-CN', {
         year: 'numeric',
@@ -492,22 +675,17 @@ function render() {
 // ===================================
 // 模态框管理
 // ===================================
-function openImageModal(id) {
-    const item = state.history.find(h => h.id === id);
-    if (!item) return;
-
+function openImageModal(url) {
     const modal = document.getElementById('image-modal');
     const modalImage = document.getElementById('modal-image');
 
-    modalImage.src = item.httpsUrl;
+    modalImage.src = url;
     modal.classList.remove('hidden');
 }
 
 function closeImageModal() {
     const modal = document.getElementById('image-modal');
     modal.classList.add('hidden');
-
-    // 清空图片源，避免下次打开时显示旧图片
     document.getElementById('modal-image').src = '';
 }
 
@@ -519,7 +697,7 @@ async function copyToClipboard(text, label) {
         await navigator.clipboard.writeText(text);
         showToast(`${label} 已复制到剪贴板`, 'success');
     } catch (err) {
-        // 降级方案：使用传统方法
+        // 降级方案
         const textarea = document.createElement('textarea');
         textarea.value = text;
         textarea.style.position = 'fixed';
@@ -537,7 +715,7 @@ async function copyToClipboard(text, label) {
 }
 
 // ===================================
-// 按钮跳动动画 (基于 code.html 的实现)
+// 按钮跳动动画
 // ===================================
 (function initButtonAnimation() {
     const svgWidth = 100;
@@ -554,13 +732,10 @@ async function copyToClipboard(text, label) {
     const w = centerX - horizontalCenterPadding - horizontalEdgePadding;
     const h = centerY - verticalCenterPadding - verticalEdgePadding;
 
-    // 存储每个按钮的动画定时器
     const animationTimers = new Map();
 
     function initAnimations() {
-        // 为所有带有 .button-svg 的按钮添加动画
         const buttons = document.querySelectorAll('.p5-button .button-svg, .nav-btn .button-svg');
-        console.log('找到的按钮数量:', buttons.length);
 
         buttons.forEach((svg, index) => {
             const button = svg.closest('.p5-button');
@@ -585,7 +760,6 @@ async function copyToClipboard(text, label) {
                 });
             };
 
-            // 鼠标进入时启动动画
             button.addEventListener('mouseenter', () => {
                 if (!animationTimers.has(index)) {
                     const timer = setInterval(animate, animationSpeed);
@@ -593,7 +767,6 @@ async function copyToClipboard(text, label) {
                 }
             });
 
-            // 鼠标离开时停止动画
             button.addEventListener('mouseleave', () => {
                 const timer = animationTimers.get(index);
                 if (timer) {
@@ -604,7 +777,6 @@ async function copyToClipboard(text, label) {
         });
     }
 
-    // 等待 DOM 和 SnapSVG 加载完成
     function checkReady() {
         if (typeof Snap !== 'undefined' && document.readyState === 'complete') {
             initAnimations();
@@ -613,7 +785,6 @@ async function copyToClipboard(text, label) {
         }
     }
 
-    // 开始检查
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', checkReady);
     } else {
