@@ -570,12 +570,31 @@ function renderHistory() {
 // 失效检查
 // ===================================
 async function loadUrlsForCheck() {
+    // 重置检查页进度条
+    document.getElementById('check-progress').classList.add('hidden');
+    document.getElementById('check-progress-fill').style.width = '0%';
+    document.getElementById('check-progress-text').textContent = '0%';
+
     const result = await apiRequest('/urls');
     
     if (result && result.success) {
         state.history = result.data || [];
         renderCheckTable();
     }
+}
+
+/**
+ * 检查单个图片URL是否有效（通过加载图片判断）
+ */
+function checkImageValid(url) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve(true);
+        img.onerror = () => resolve(false);
+        img.src = url;
+        // 设置超时，防止长时间无响应
+        setTimeout(() => resolve(false), 10000);
+    });
 }
 
 async function startCheck() {
@@ -596,18 +615,13 @@ async function startCheck() {
     const progressText = document.getElementById('check-progress-text');
     const total = state.history.length;
     let checked = 0;
+    let invalidCount = 0;
     
     for (const item of state.history) {
-        try {
-            // 前端直接请求图片URL检查有效性
-            const response = await fetch(item.httpsUrl, { 
-                method: 'HEAD',
-                mode: 'no-cors' // 跨域情况下只能判断是否抛出错误
-            });
-            // no-cors模式下response.ok不可用，只能假设不抛错就是成功
-            item.isValid = true;
-        } catch (error) {
-            item.isValid = false;
+        // 通过加载图片检查URL有效性
+        item.isValid = await checkImageValid(item.httpsUrl);
+        if (!item.isValid) {
+            invalidCount++;
         }
         
         checked++;
@@ -620,7 +634,16 @@ async function startCheck() {
     }
     
     state.isChecking = false;
-    showToast('检查完成', 'success');
+    
+    // 检查完成提示，报告失效数量
+    if (invalidCount > 0) {
+        showToast(`检查完成，发现 ${invalidCount} 张失效图片`, 'warning');
+    } else {
+        showToast('检查完成，所有图片均有效', 'success');
+    }
+    
+    // 更新清除按钮状态
+    updateClearInvalidButtonState();
     
     setTimeout(() => {
         document.getElementById('check-progress').classList.add('hidden');
@@ -654,6 +677,68 @@ function renderCheckTable() {
             </tr>
         `;
     }).join('');
+}
+
+/**
+ * 更新清除失效按钮状态
+ */
+function updateClearInvalidButtonState() {
+    const clearBtn = document.getElementById('clear-invalid');
+    const invalidCount = state.history.filter(item => item.isValid === false).length;
+    
+    // 获取文本节点（SVG后面的文本）
+    const textNode = Array.from(clearBtn.childNodes).find(node => 
+        node.nodeType === Node.TEXT_NODE && node.textContent.trim()
+    );
+    
+    if (invalidCount > 0) {
+        clearBtn.disabled = false;
+        if (textNode) {
+            textNode.textContent = `清除失效 (${invalidCount})`;
+        }
+    } else {
+        clearBtn.disabled = true;
+        if (textNode) {
+            textNode.textContent = '清除失效';
+        }
+    }
+}
+
+/**
+ * 一键清除失效图片记录
+ */
+async function clearInvalidImages() {
+    const invalidItems = state.history.filter(item => item.isValid === false);
+    
+    if (invalidItems.length === 0) {
+        showToast('没有失效的图片', 'warning');
+        return;
+    }
+    
+    let deletedCount = 0;
+    let failedCount = 0;
+    
+    for (const item of invalidItems) {
+        const result = await apiRequest(`/history/${item.id}`, {
+            method: 'DELETE'
+        });
+        
+        if (result && result.success) {
+            deletedCount++;
+        } else {
+            failedCount++;
+        }
+    }
+    
+    if (failedCount === 0) {
+        showToast(`已清除 ${deletedCount} 条失效记录`, 'success');
+    } else {
+        showToast(`清除完成: 成功${deletedCount}条, 失败${failedCount}条`, 'warning');
+    }
+    
+    // 重新加载数据
+    await loadUrlsForCheck();
+    updateClearInvalidButtonState();
 }
 
 // ===================================
@@ -752,6 +837,9 @@ function initEventListeners() {
     
     // 开始检查按钮
     document.getElementById('start-check').addEventListener('click', startCheck);
+
+    // 清除失效按钮
+    document.getElementById('clear-invalid').addEventListener('click', clearInvalidImages);
 
     // 模态框事件
     document.getElementById('modal-close').addEventListener('click', closeImageModal);
