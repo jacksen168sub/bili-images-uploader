@@ -147,6 +147,9 @@ uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000
 ## 有话说
 尝试过模仿P5的美术后,再此被P5的美术折服。不愧于天下第一之名,很多设计都模仿不来,即使模仿过来要么阅读体验糟糕;要么兼容性雪崩。我只能尽力而为大概的模仿一下了[摊手]
 
+## 使用条款
+当你使用时及同意了本项目的使用条款: [使用条款](https://github.com/jacksen168sub/bili-images-uploader/blob/master/TERMS.md)
+
 ## 许可证
 
 MIT License
