@@ -1,6 +1,21 @@
 # Bili Images Uploader
 
-B站图片上传器 - 将图片上传到B站图床并通过评论实现持久化存储
+Bili Images Uploader - 将图片上传到B站图床并通过评论实现持久化存储
+
+## 预言信
+
+<img width="1770" height="1300" alt="CallingCard" src="https://github.com/user-attachments/assets/35c02160-0f3d-4ac5-9d15-523a2e7822c6" />
+
+## 截图预览
+
+<details>
+<img width="640" height="480" alt="" src="https://github.com/user-attachments/assets/8fabeb21-6f65-4b2a-93c6-c15fe164f8bd" />
+<img width="640" height="480" alt="" src="https://github.com/user-attachments/assets/aebd227d-5f52-4556-b1ae-0ea204a037b8" />
+<img width="640" height="480" alt="" src="https://github.com/user-attachments/assets/710aef91-b465-4a94-bdda-d6b4c719d5b0" />
+<img width="640" height="480" alt="" src="https://github.com/user-attachments/assets/2aefa780-3ec8-4e21-b6ab-338f1fd5e286" />
+<img width="640" height="480" alt="" src="https://github.com/user-attachments/assets/b52a943d-5c58-49b3-b0e2-d115535162d7" />
+<img width="640" height="480" alt="" src="https://github.com/user-attachments/assets/2d585117-5eac-4144-b45a-6cf3dc66b97f" />
+</details>
 
 ## 功能特性
 
@@ -109,6 +124,9 @@ uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000
 - [热情之红，反抗之心！——《女神异闻录5》界面赏析（上）](https://api.xiaoheihe.cn/maxnews/app/share/detail/3016980)
 - [p5-ui](https://github.com/q-mona/p5-ui)
 - [Persona 5 Menu UI](https://codepen.io/dangodev/pen/qXdxOO)
+
+## 有话说
+尝试过模仿P5的美术后,再此被P5的美术折服。不愧于天下第一之名,很多设计都模仿不来,即使模仿过来要么阅读体验糟糕;要么兼容性雪崩。我只能尽力而为大概的模仿一下了[摊手]
 
 ## 许可证
 
