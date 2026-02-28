@@ -16,7 +16,8 @@ const state = {
     },
     uploadQueue: [],
     history: [],
-    isChecking: false
+    isChecking: false,
+    isUploading: false  // 上传锁定状态
 };
 
 // ===================================
@@ -311,11 +312,16 @@ function renderUploadQueue() {
                 statusClass = 'status-pending';
                 break;
             case 'uploading':
-                statusText = '上传中...';
+                // 显示分组进度
+                if (item.groupId) {
+                    statusText = `上传中... [组${item.groupId} ${item.groupIndex}/${item.groupTotal}]`;
+                } else {
+                    statusText = '上传中...';
+                }
                 statusClass = 'status-uploading';
                 break;
             case 'completed':
-                statusText = item.url || '已完成';
+                statusText = '已完成';
                 statusClass = 'status-completed';
                 break;
             case 'error':
@@ -345,7 +351,20 @@ function renderUploadQueue() {
 // ===================================
 // 上传功能
 // ===================================
+
+/**
+ * 开始分组上传
+ * - 将pending状态的图片按9张一组分割
+ * - 每组生成唯一ID
+ * - 上传完成后自动发送评论
+ */
 async function startUpload() {
+    // 检查是否正在上传
+    if (state.isUploading) {
+        showToast('上传正在进行中，请稍候', 'warning');
+        return;
+    }
+    
     const pendingItems = state.uploadQueue.filter(item => item.status === 'pending');
     
     if (pendingItems.length === 0) {
@@ -353,62 +372,152 @@ async function startUpload() {
         return;
     }
     
-    showToast('开始上传...', 'info');
+    // 创建分组
+    const groups = createUploadGroups();
     
-    for (const item of pendingItems) {
-        item.status = 'uploading';
-        renderUploadQueue();
+    if (groups.length === 0) {
+        showToast('没有待上传的文件', 'warning');
+        return;
+    }
+    
+    // 锁定上传状态
+    state.isUploading = true;
+    updateUploadButtonState();
+    
+    showToast(`开始上传 ${pendingItems.length} 个文件，分为 ${groups.length} 组`, 'info');
+    
+    let totalCompleted = 0;
+    let totalFailed = 0;
+    
+    // 按组上传
+    for (const group of groups) {
+        const { groupId, images, totalCount } = group;
+        let groupHasError = false;
         
-        // 创建FormData
-        const formData = new FormData();
-        formData.append('files', item.file);
-        
-        try {
-            const response = await fetch(`${API_BASE}/upload`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${state.token}`
-                },
-                body: formData
-            });
+        // 逐个上传组内图片
+        for (let i = 0; i < images.length; i++) {
+            const item = images[i];
+            const currentIndex = i + 1;
             
-            const result = await response.json();
+            item.status = 'uploading';
+            item.groupId = groupId;
+            item.groupIndex = currentIndex;
+            item.groupTotal = totalCount;
+            renderUploadQueue();
             
-            if (result.success && result.results && result.results.length > 0) {
-                const uploadResult = result.results[0];
+            // 创建FormData
+            const formData = new FormData();
+            formData.append('files', item.file);
+            formData.append('group_id', groupId);
+            formData.append('total_count', totalCount.toString());
+            formData.append('current_index', currentIndex.toString());
+            
+            try {
+                const response = await fetch(`${API_BASE}/upload`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${state.token}`
+                    },
+                    body: formData
+                });
                 
-                if (uploadResult.success) {
-                    item.status = 'completed';
-                    item.httpUrl = uploadResult.httpUrl;
-                    item.httpsUrl = uploadResult.httpsUrl;
+                const result = await response.json();
+                
+                if (result.success && result.results && result.results.length > 0) {
+                    const uploadResult = result.results[0];
                     
-                    if (uploadResult.warning) {
-                        showToast(uploadResult.warning, 'warning');
+                    if (uploadResult.success) {
+                        item.status = 'completed';
+                        item.httpUrl = uploadResult.httpUrl;
+                        item.httpsUrl = uploadResult.httpsUrl;
+                        item.remoteFilename = uploadResult.remoteFilename;
+                        item.remoteNameWithoutExt = uploadResult.remoteNameWithoutExt;
+                        totalCompleted++;
+                        
+                        // 如果是组内最后一张，显示评论结果
+                        if (currentIndex === totalCount && result.commentResult) {
+                            if (result.commentResult.success) {
+                                showToast(`第${groups.indexOf(group) + 1}组: ${result.commentResult.message}`, 'success');
+                            } else {
+                                showToast(`第${groups.indexOf(group) + 1}组评论失败: ${result.commentResult.message}`, 'error');
+                            }
+                        }
+                    } else {
+                        item.status = 'error';
+                        item.error = uploadResult.error;
+                        totalFailed++;
+                        groupHasError = true;
                     }
                 } else {
                     item.status = 'error';
-                    item.error = uploadResult.error;
+                    item.error = result.detail || '上传失败';
+                    totalFailed++;
+                    groupHasError = true;
                 }
-            } else {
+            } catch (error) {
                 item.status = 'error';
-                item.error = result.detail || '上传失败';
+                item.error = '网络错误';
+                totalFailed++;
+                groupHasError = true;
             }
-        } catch (error) {
-            item.status = 'error';
-            item.error = '网络错误';
+            
+            renderUploadQueue();
         }
         
-        renderUploadQueue();
+        // 如果组内有错误且不是最后一张，尝试强制完成已上传的图片
+        if (groupHasError) {
+            const successItems = images.filter(img => img.status === 'completed');
+            if (successItems.length > 0 && successItems.length < totalCount) {
+                // 调用finalize API让已上传的图片单独评论
+                try {
+                    const formData = new FormData();
+                    formData.append('group_id', groupId);
+                    await fetch(`${API_BASE}/group/finalize`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${state.token}`
+                        },
+                        body: formData
+                    });
+                } catch (e) {
+                    console.error('Finalize group failed:', e);
+                }
+            }
+        }
     }
     
-    // 显示完成提示
-    const completed = state.uploadQueue.filter(item => item.status === 'completed').length;
-    const failed = state.uploadQueue.filter(item => item.status === 'error').length;
+    // 释放上传锁定
+    state.isUploading = false;
+    updateUploadButtonState();
     
-    if (failed === 0) {
-        showToast(`所有文件上传完成 (${completed}个)`, 'success');
+    // 显示完成提示
+    if (totalFailed === 0) {
+        showToast(`所有文件上传完成 (${totalCompleted}个)`, 'success');
     } else {
-        showToast(`上传完成: 成功${completed}个, 失败${failed}个`, 'warning');
+        showToast(`上传完成: 成功${totalCompleted}个, 失败${totalFailed}个`, 'warning');
+    }
+}
+
+/**
+ * 更新上传按钮状态
+ */
+function updateUploadButtonState() {
+    const uploadBtn = document.getElementById('start-upload');
+    if (uploadBtn) {
+        if (state.isUploading) {
+            uploadBtn.disabled = true;
+            uploadBtn.classList.add('disabled');
+        } else {
+            uploadBtn.disabled = false;
+            uploadBtn.classList.remove('disabled');
+        }
+        // 更新按钮文本，保留SVG元素
+        const textNode = Array.from(uploadBtn.childNodes).find(node => 
+            node.nodeType === Node.TEXT_NODE && node.textContent.trim()
+        );
+        if (textNode) {
+            textNode.textContent = state.isUploading ? '上传中...' : '开始上传';
+        }
     }
 }
 
@@ -658,6 +767,39 @@ function initEventListeners() {
 // ===================================
 // 工具函数
 // ===================================
+
+/**
+ * 生成8位随机组ID
+ */
+function generateGroupId() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    for (let i = 0; i < 8; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+}
+
+/**
+ * 将pending状态的图片按9张一组分割
+ * @returns {Array} 分组列表，每组包含 {groupId, images}
+ */
+function createUploadGroups() {
+    const pendingItems = state.uploadQueue.filter(item => item.status === 'pending');
+    const groups = [];
+    
+    for (let i = 0; i < pendingItems.length; i += 9) {
+        const groupImages = pendingItems.slice(i, i + 9);
+        groups.push({
+            groupId: generateGroupId(),
+            images: groupImages,
+            totalCount: groupImages.length
+        });
+    }
+    
+    return groups;
+}
+
 function formatFileSize(bytes) {
     if (bytes === 0) return '0 B';
     const k = 1024;

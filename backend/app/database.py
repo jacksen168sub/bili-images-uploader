@@ -76,10 +76,13 @@ class Database:
         conn = self._get_connection()
         cursor = conn.cursor()
         
+        # 使用本地时间
+        local_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
         cursor.execute('''
-            INSERT INTO upload_history (filename, http_url, https_url, remote_filename, remote_name_without_ext, file_size, status, error_msg)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (filename, http_url, https_url, remote_filename, remote_name_without_ext, file_size, status, error_msg))
+            INSERT INTO upload_history (filename, http_url, https_url, remote_filename, remote_name_without_ext, file_size, upload_time, status, error_msg)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (filename, http_url, https_url, remote_filename, remote_name_without_ext, file_size, local_time, status, error_msg))
         
         record_id = cursor.lastrowid
         conn.commit()

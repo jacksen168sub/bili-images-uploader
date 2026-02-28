@@ -5,6 +5,7 @@ B站图片上传器 - FastAPI主入口
 import os
 import mimetypes
 from pathlib import Path
+from urllib.parse import urlparse
 from typing import List, Optional
 from datetime import datetime
 
@@ -18,6 +19,7 @@ from .config import config_manager
 from .database import db
 from .bili_api import BiliAPI
 from .dependencies import verify_token
+from .upload_groups import group_manager, ImageInfo
 
 
 # 创建FastAPI应用
@@ -127,10 +129,17 @@ async def get_version():
 @app.post("/api/upload")
 async def upload_images(
     files: List[UploadFile] = File(...),
+    group_id: str = Form(...),
+    total_count: int = Form(...),
+    current_index: int = Form(...),
     token: str = Depends(verify_token)
 ):
     """
-    批量上传图片到B站
+    分组上传图片到B站
+    - group_id: 分组ID（8位随机字符串）
+    - total_count: 组内图片总数
+    - current_index: 当前图片序号（从1开始）
+    - 当 current_index == total_count 时，自动发送多图片评论
     """
     # 检查B站配置
     bili_config = config_manager.get_bili_config(token)
@@ -138,6 +147,19 @@ async def upload_images(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="请先配置B站账号信息"
+        )
+    
+    # 参数验证
+    if total_count < 1 or total_count > 9:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="组内图片数量必须在1-9之间"
+        )
+    
+    if current_index < 1 or current_index > total_count:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="当前图片序号无效"
         )
     
     # 创建B站API实例
@@ -148,6 +170,7 @@ async def upload_images(
     )
     
     results = []
+    comment_result = None
     
     for file in files:
         # 读取文件内容
@@ -176,11 +199,12 @@ async def upload_images(
             })
             continue
         
-        # 上传到B站
-        success, data = await bili.upload_and_persist(content, filename)
+        # 只上传图片，不立即评论
+        success, data = await bili.upload_image(content, filename)
         
         if success:
             image_url = data.get("image_url")
+            
             # 正确生成http和https两种URL
             if image_url:
                 if image_url.startswith("https://"):
@@ -196,20 +220,33 @@ async def upload_images(
                 http_url = ""
                 https_url = ""
             
-            # 获取远端文件名信息
-            remote_filename = data.get("remote_filename", "")
-            remote_name_without_ext = data.get("remote_name_without_ext", "")
+            # 从 image_url 提取远端文件名信息
+            parsed = urlparse(https_url)
+            url_path = parsed.path  # /bfs/new_dyn/xxx.jpg
+            remote_filename = Path(url_path).name if url_path else ""  # xxx.jpg
+            remote_name_without_ext = Path(url_path).stem if url_path else ""  # xxx
             
-            # 保存到数据库
-            db.add_record(
+            # 本地文件名（不含后缀）
+            local_name_without_ext = Path(filename).stem
+            
+            # 存储到分组管理器
+            image_info = ImageInfo(
                 filename=filename,
                 http_url=http_url,
                 https_url=https_url,
                 remote_filename=remote_filename,
                 remote_name_without_ext=remote_name_without_ext,
                 file_size=file_size,
-                status="success"
+                image_width=data.get("image_width", 0),
+                image_height=data.get("image_height", 0)
             )
+            
+            # 确保分组存在
+            group = group_manager.get_group(group_id)
+            if not group:
+                group = group_manager.create_group(group_id, total_count)
+            
+            group_manager.add_image(group_id, image_info)
             
             results.append({
                 "success": True,
@@ -219,27 +256,122 @@ async def upload_images(
                 "remoteFilename": remote_filename,
                 "remoteNameWithoutExt": remote_name_without_ext,
                 "width": data.get("image_width"),
-                "height": data.get("image_height"),
-                "warning": data.get("warning")
+                "height": data.get("image_height")
             })
-        else:
-            # 记录失败
-            db.add_record(
-                filename=filename,
-                http_url="",
-                https_url="",
-                file_size=file_size,
-                status="failed",
-                error_msg=data.get("error", "上传失败")
-            )
             
+            # 检查是否组内所有图片都已上传完成
+            if current_index == total_count:
+                # 获取组内所有图片信息并发送评论
+                group = group_manager.get_and_remove_group(group_id)
+                if group and len(group.images) > 0:
+                    images_for_comment = [
+                        {
+                            "image_url": img.https_url,
+                            "local_filename": img.filename,
+                            "remote_name_without_ext": img.remote_name_without_ext,
+                            "image_width": img.image_width,
+                            "image_height": img.image_height
+                        }
+                        for img in group.images
+                    ]
+                    
+                    comment_success, comment_msg = await bili.send_multi_image_comment(images_for_comment)
+                    comment_result = {
+                        "success": comment_success,
+                        "message": comment_msg,
+                        "imageCount": len(group.images)
+                    }
+                    
+                    # 保存到数据库
+                    for img in group.images:
+                        db.add_record(
+                            filename=img.filename,
+                            http_url=img.http_url,
+                            https_url=img.https_url,
+                            remote_filename=img.remote_filename,
+                            remote_name_without_ext=img.remote_name_without_ext,
+                            file_size=img.file_size,
+                            status="success" if comment_success else "success",
+                            error_msg="" if comment_success else f"评论失败: {comment_msg}"
+                        )
+        else:
             results.append({
                 "success": False,
                 "filename": filename,
-                "error": data.get("error", "上传失败")
+                "error": data.get("message") or data.get("error", "上传失败")
             })
     
-    return {"success": True, "results": results}
+    response = {"success": True, "results": results}
+    if comment_result:
+        response["commentResult"] = comment_result
+    
+    return response
+
+
+@app.post("/api/group/finalize")
+async def finalize_group(
+    group_id: str = Form(...),
+    token: str = Depends(verify_token)
+):
+    """
+    强制完成分组（用于上传中断或失败时）
+    将组内已上传的图片发送评论
+    """
+    # 检查B站配置
+    bili_config = config_manager.get_bili_config(token)
+    if not all([bili_config["csrf"], bili_config["sessdata"], bili_config["oid"]]):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="请先配置B站账号信息"
+        )
+    
+    # 获取分组
+    group = group_manager.get_and_remove_group(group_id)
+    if not group or len(group.images) == 0:
+        return {
+            "success": False,
+            "message": "分组不存在或没有图片"
+        }
+    
+    # 创建B站API实例
+    bili = BiliAPI(
+        csrf=bili_config["csrf"],
+        sessdata=bili_config["sessdata"],
+        oid=bili_config["oid"]
+    )
+    
+    # 发送评论
+    images_for_comment = [
+        {
+            "image_url": img.https_url,
+            "local_filename": img.filename,
+            "remote_name_without_ext": img.remote_name_without_ext,
+            "image_width": img.image_width,
+            "image_height": img.image_height
+        }
+        for img in group.images
+    ]
+    
+    comment_success, comment_msg = await bili.send_multi_image_comment(images_for_comment)
+    
+    # 保存到数据库
+    for img in group.images:
+        db.add_record(
+            filename=img.filename,
+            http_url=img.http_url,
+            https_url=img.https_url,
+            remote_filename=img.remote_filename,
+            remote_name_without_ext=img.remote_name_without_ext,
+            file_size=img.file_size,
+            status="success",
+            error_msg="" if comment_success else f"评论失败: {comment_msg}"
+        )
+    
+    return {
+        "success": comment_success,
+        "message": comment_msg,
+        "imageCount": len(group.images)
+    }
 
 
 @app.get("/api/history")

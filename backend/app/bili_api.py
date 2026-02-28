@@ -88,7 +88,7 @@ class BiliAPI:
     async def send_comment(self, image_url: str, local_filename: str, remote_name_without_ext: str,
                            image_width: int = 0, image_height: int = 0) -> Tuple[bool, str]:
         """
-        发送带图评论实现图片持久化
+        发送带图评论实现图片持久化（单图）
         
         Args:
             image_url: B站图片URL
@@ -140,6 +140,82 @@ class BiliAPI:
                 
                 if result.get("code") == 0:
                     return True, "评论发送成功"
+                else:
+                    error_msg = result.get("message", "评论发送失败")
+                    return False, f"[{result.get('code')}] {error_msg}"
+            except Exception as e:
+                return False, str(e)
+    
+    async def send_multi_image_comment(self, images: list) -> Tuple[bool, str]:
+        """
+        发送多图评论实现图片持久化（最多9张）
+        
+        Args:
+            images: 图片信息列表，每个元素包含:
+                - image_url: B站图片URL
+                - local_filename: 本地原始文件名
+                - remote_name_without_ext: 远端文件名（不含后缀）
+                - image_width: 图片宽度
+                - image_height: 图片高度
+        
+        Returns:
+            (success, message): 成功状态和消息
+        """
+        if not images:
+            return False, "没有图片需要评论"
+        
+        if len(images) > 9:
+            return False, "单次评论最多支持9张图片"
+        
+        # 构建评论内容（每张图片只保留文件名和远端文件名，空一行分隔）
+        message_parts = []
+        for img in images:
+            part = f"文件名: {img.get('local_filename', 'unknown')}\n远端文件名: {img.get('remote_name_without_ext', 'unknown')}"
+            message_parts.append(part)
+        
+        # 时间信息只加在最后
+        timestamp = int(time.time())
+        datetime_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        message_parts.append(f"时间戳: {timestamp}\n时间: {datetime_str}")
+        
+        message = "\n\n".join(message_parts)
+        
+        # 构造pictures参数（数组格式的JSON字符串）
+        pictures_list = []
+        for img in images:
+            pictures_list.append({
+                "img_src": img.get("image_url", ""),
+                "img_width": img.get("image_width", 0),
+                "img_height": img.get("image_height", 0)
+            })
+        
+        async with httpx.AsyncClient(timeout=30) as client:
+            data = {
+                "csrf": self.csrf,
+                "plat": 1,
+                "oid": self.oid,
+                "type": 11,
+                "message": message,
+                "at_name_to_mid": "{}",
+                "pictures": json.dumps(pictures_list, ensure_ascii=False),
+                "gaia_source": "main_web",
+                "statistics": '{"appId":100,"platform":5}'
+            }
+            
+            headers = self._get_headers()
+            headers["Content-Type"] = "application/x-www-form-urlencoded"
+            
+            try:
+                response = await client.post(
+                    self.COMMENT_URL,
+                    headers=headers,
+                    data=data
+                )
+                
+                result = response.json()
+                
+                if result.get("code") == 0:
+                    return True, f"评论发送成功（{len(images)}张图片）"
                 else:
                     error_msg = result.get("message", "评论发送失败")
                     return False, f"[{result.get('code')}] {error_msg}"

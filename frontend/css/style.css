@@ -996,40 +996,12 @@ input {
 
 .queue-item-size {
     font-size: var(--p5-font-size-sm);
-    color: var(--p5-light-gray);
 }
 
 .queue-item-actions {
     display: flex;
     gap: var(--p5-spacing-sm);
 }
-
-/* .p5-button.action-btn.queue-item-delete {
-    color: var(--p5-red);
-    background-color: var(--p5-dark-gray);
-    border-color: var(--p5-red);
-}
-
-.queue-item-delete:hover {
-    transform: skew(-10deg) scale(1.1);
-    box-shadow: 2px 2px 0 var(--p5-white);
-}
-
-.queue-item-copy {
-    background-color: var(--p5-blue);
-    color: var(--p5-white);
-    border: none;
-    padding: var(--p5-spacing-xs) var(--p5-spacing-sm);
-    font-size: var(--p5-font-size-sm);
-    text-transform: uppercase;
-    transform: skew(-10deg);
-    transition: all var(--p5-transition-fast);
-}
-
-.queue-item-copy:hover {
-    transform: skew(-10deg) scale(1.1);
-    box-shadow: 2px 2px 0 var(--p5-white);
-} */
 
 .upload-btn {
     font-size: var(--p5-font-size-lg);
@@ -1249,4 +1221,55 @@ input {
     border-top-color: var(--p5-red);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
+}
+
+/* ===================================
+   上传按钮禁用状态
+   =================================== */
+.p5-button.disabled,
+.p5-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background-color: var(--p5-dark-gray);
+    color: var(--p5-light-gray);
+    border-color: var(--p5-light-gray);
+}
+
+.p5-button.disabled:hover,
+.p5-button:disabled:hover {
+    box-shadow: none;
+    transform: skew(-10deg);
+    color: var(--p5-light-gray);
+    border-color: var(--p5-light-gray);
+}
+
+.p5-button.disabled:hover .button-svg,
+.p5-button:disabled:hover .button-svg {
+    opacity: 0;
+}
+
+/* ===================================
+   队列状态样式
+   =================================== */
+.queue-item-status {
+    font-size: var(--p5-font-size-sm);
+    color: var(--p5-light-gray);
+    margin-top: var(--p5-spacing-xs);
+    word-break: break-all;
+}
+
+.queue-item.status-uploading .queue-item-status {
+    color: var(--p5-yellow);
+}
+
+.queue-item.status-completed .queue-item-status {
+    color: var(--p5-green);
+}
+
+.queue-item.status-error .queue-item-status {
+    color: var(--p5-red);
+}
+
+.queue-item:hover .queue-item-status {
+    color: var(--p5-white);
 }
