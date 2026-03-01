@@ -72,6 +72,22 @@
                                 class="p5-char p5-char-md">传</span><span class="p5-char p5-char-lg">队</span><span
                                 class="p5-char p5-char-sm">列</span></h3>
                         <div id="queue-list" class="queue-list"></div>
+                        <div class="queue-secondary-actions">
+                            <button id="clear-queue" class="p5-button p5-button-danger">
+                                <svg class="button-svg" viewBox="0 0 100 50" preserveAspectRatio="none">
+                                    <polygon class="red" points="10,20 80,20 80,30, 20,30"></polygon>
+                                    <polygon class="blue" points="30,10 90,30 100,35, 20,50"></polygon>
+                                </svg>
+                                清除队列
+                            </button>
+                            <button id="copy-success-urls" class="p5-button">
+                                <svg class="button-svg" viewBox="0 0 100 50" preserveAspectRatio="none">
+                                    <polygon class="red" points="10,20 80,20 80,30, 20,30"></polygon>
+                                    <polygon class="blue" points="30,10 90,30 100,35, 20,50"></polygon>
+                                </svg>
+                                复制成功URL
+                            </button>
+                        </div>
                         <button id="start-upload" class="p5-button p5-button-primary upload-btn">
                             <svg class="button-svg" viewBox="0 0 100 50" preserveAspectRatio="none">
                                 <polygon class="red" points="10,20 80,20 80,30, 20,30"></polygon>
@@ -94,6 +110,7 @@
                         <table class="p5-table">
                             <thead>
                                 <tr>
+                                    <th>ID</th>
                                     <th>时间</th>
                                     <th>文件名</th>
                                     <th>大小</th>
@@ -140,9 +157,10 @@
                         <table class="p5-table">
                             <thead>
                                 <tr>
+                                    <th>ID</th>
                                     <th>时间</th>
                                     <th>文件名</th>
-                                    <th>图片URL</th>
+                                    <th>操作</th>
                                     <th>状态</th>
                                 </tr>
                             </thead>
@@ -191,7 +209,7 @@
         </main>
 
         <!-- 通知提示 -->
-        <div id="toast" class="p5-toast hidden"></div>
+        <div id="toast-container" class="toast-container"></div>
 
         <!-- 图片预览模态框 -->
         <div id="image-modal" class="p5-modal hidden">

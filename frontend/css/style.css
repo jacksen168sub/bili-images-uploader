@@ -282,6 +282,7 @@ input {
     color: var(--p5-black);
     border-color: var(--p5-red);
     box-shadow: 4px 4px 0 var(--p5-red);
+    z-index: 10;
 }
 
 .p5-button:active {
@@ -482,10 +483,18 @@ input {
 /* ===================================
    P5 通知提示
    =================================== */
-.p5-toast {
+.toast-container {
     position: fixed;
     top: 20px;
     right: 20px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: var(--p5-spacing-sm);
+    max-width: 400px;
+}
+
+.p5-toast {
     background-color: var(--p5-black);
     border: var(--p5-border-width) solid var(--p5-white);
     padding: var(--p5-spacing-md) var(--p5-spacing-lg);
@@ -495,7 +504,6 @@ input {
     letter-spacing: 1px;
     transform: skew(-10deg);
     box-shadow: 4px 4px 0 var(--p5-red);
-    z-index: 1000;
     animation: slideInRight 0.3s ease-out;
 }
 
@@ -522,6 +530,17 @@ input {
     to {
         transform: skew(-10deg) translateX(0);
         opacity: 1;
+    }
+}
+
+@keyframes slideOutRight {
+    from {
+        transform: skew(-10deg) translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: skew(-10deg) translateX(100%);
+        opacity: 0;
     }
 }
 
@@ -627,7 +646,7 @@ input {
     z-index: -1;
 }
 
-.action-btn:hover:before {
+.action-btn:hover:not(.disabled):before {
     background: var(--p5-white);
     animation: buttonAnimation 1s ease-out infinite;
 }
@@ -1008,6 +1027,17 @@ input {
     padding: var(--p5-spacing-lg);
 }
 
+.queue-secondary-actions {
+    display: flex;
+    gap: var(--p5-spacing-md);
+    margin-bottom: var(--p5-spacing-md);
+    isolation: isolate;
+}
+
+.queue-secondary-actions .p5-button {
+    flex: 1;
+}
+
 /* ===================================
    历史页 & 检查页
    =================================== */
@@ -1090,6 +1120,11 @@ input {
    响应式设计
    =================================== */
 @media (max-width: 768px) {
+    /* 页面容器裁剪溢出 */
+    #app {
+        overflow-x: hidden;
+    }
+
     /* 导航栏 */
     .nav-container {
         flex-direction: column;
@@ -1104,7 +1139,7 @@ input {
     }
 
     .nav-btn {
-        padding: var(--p5-spacing-sm) var(--p5-spacing-md);
+        padding: var(--p5-spacing-xs) var(--p5-spacing-sm);
         font-size: var(--p5-font-size-sm);
         white-space: nowrap;
     }
@@ -1146,6 +1181,18 @@ input {
     .p5-button {
         padding: var(--p5-spacing-md);
         font-size: var(--p5-font-size-sm);
+    }
+
+    /* Toast容器 */
+    .toast-container {
+        left: auto;
+        right: 10px;
+        max-width: 280px;
+    }
+
+    .p5-toast {
+        font-size: var(--p5-font-size-sm);
+        padding: var(--p5-spacing-sm) var(--p5-spacing-md);
     }
 
     /* 配置表单 */
