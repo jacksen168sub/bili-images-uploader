@@ -17,7 +17,9 @@ const state = {
     uploadQueue: [],
     history: [],
     isChecking: false,
-    isUploading: false  // 上传锁定状态
+    isUploading: false,  // 上传锁定状态
+    toastQueue: [],      // toast消息队列
+    activeToasts: 0      // 当前显示的toast数量
 };
 
 // ===================================
@@ -521,6 +523,41 @@ function updateUploadButtonState() {
     }
 }
 
+/**
+ * 清除上传队列
+ */
+function clearQueue() {
+    if (state.isUploading) {
+        showToast('上传进行中，无法清除队列', 'warning');
+        return;
+    }
+    
+    state.uploadQueue = [];
+    renderUploadQueue();
+    showToast('队列已清除', 'success');
+}
+
+/**
+ * 复制所有成功上传的图片URL到剪贴板
+ */
+async function copySuccessUrls() {
+    const successItems = state.uploadQueue.filter(item => item.status === 'completed' && item.httpsUrl);
+    
+    if (successItems.length === 0) {
+        showToast('没有成功上传的图片', 'warning');
+        return;
+    }
+    
+    const urls = successItems.map(item => item.httpsUrl).join('\n');
+    
+    try {
+        await navigator.clipboard.writeText(urls);
+        showToast(`已复制 ${successItems.length} 个URL`, 'success');
+    } catch (err) {
+        showToast('复制失败', 'error');
+    }
+}
+
 // ===================================
 // 历史记录管理
 // ===================================
@@ -537,12 +574,13 @@ function renderHistory() {
     const tbody = document.getElementById('history-table-body');
     
     if (state.history.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--p5-light-gray);">暂无历史记录</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--p5-light-gray);">暂无历史记录</td></tr>';
         return;
     }
     
     tbody.innerHTML = state.history.map(item => `
         <tr>
+            <td>${item.id}</td>
             <td>${formatDateTime(item.uploadTime)}</td>
             <td>${item.filename}</td>
             <td>${formatFileSize(item.fileSize)}</td>
@@ -654,7 +692,7 @@ function renderCheckTable() {
     const tbody = document.getElementById('check-table-body');
     
     if (state.history.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--p5-light-gray);">暂无历史记录</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--p5-light-gray);">暂无历史记录</td></tr>';
         return;
     }
     
@@ -668,11 +706,28 @@ function renderCheckTable() {
             statusHtml = '<span class="p5-status">未知</span>';
         }
         
+        const isInvalid = item.isValid === false;
+        
         return `
             <tr>
+                <td>${item.id}</td>
                 <td>${formatDateTime(item.uploadTime)}</td>
                 <td>${item.filename}</td>
-                <td><a href="${item.httpsUrl}" target="_blank" rel="noopener noreferrer">${item.httpsUrl}</a></td>
+                <td>
+                    <div class="action-buttons">
+                        ${item.httpsUrl ? `
+                            <button class="p5-button action-btn" onclick="window.open('${item.httpsUrl}', '_blank')">
+                                打开
+                            </button>
+                            <button class="p5-button action-btn" onclick="copyToClipboard('${item.httpsUrl}', 'URL')">
+                                复制
+                            </button>
+                            <button class="p5-button action-btn ${isInvalid ? '' : 'disabled'}" ${isInvalid ? `onclick="deleteRecord(${item.id})"` : 'disabled'}>
+                                清除
+                            </button>
+                        ` : '-'}
+                    </div>
+                </td>
                 <td>${statusHtml}</td>
             </tr>
         `;
@@ -739,6 +794,24 @@ async function clearInvalidImages() {
     // 重新加载数据
     await loadUrlsForCheck();
     updateClearInvalidButtonState();
+}
+
+/**
+ * 删除单条记录
+ */
+async function deleteRecord(id) {
+    const result = await apiRequest(`/history/${id}`, {
+        method: 'DELETE'
+    });
+    
+    if (result && result.success) {
+        showToast('记录已删除', 'success');
+        // 重新加载数据
+        await loadUrlsForCheck();
+        updateClearInvalidButtonState();
+    } else {
+        showToast('删除失败', 'error');
+    }
 }
 
 // ===================================
@@ -829,6 +902,12 @@ function initEventListeners() {
     // 开始上传按钮
     document.getElementById('start-upload').addEventListener('click', startUpload);
     
+    // 清除队列按钮
+    document.getElementById('clear-queue').addEventListener('click', clearQueue);
+    
+    // 复制成功URL按钮
+    document.getElementById('copy-success-urls').addEventListener('click', copySuccessUrls);
+    
     // 配置表单
     document.getElementById('config-form').addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -909,13 +988,47 @@ function formatDateTime(isoString) {
 }
 
 function showToast(message, type = 'info') {
-    const toast = document.getElementById('toast');
-    toast.textContent = message;
-    toast.className = `p5-toast ${type}`;
-    toast.classList.remove('hidden');
+    // 添加到队列
+    state.toastQueue.push({ message, type });
     
+    // 尝试显示下一条toast
+    processToastQueue();
+}
+
+/**
+ * 处理toast队列，最多同时显示3条
+ */
+function processToastQueue() {
+    const MAX_TOASTS = 3;
+    
+    // 如果没有待显示的toast或已达到最大数量，直接返回
+    if (state.toastQueue.length === 0 || state.activeToasts >= MAX_TOASTS) {
+        return;
+    }
+    
+    // 获取下一条toast
+    const toastData = state.toastQueue.shift();
+    state.activeToasts++;
+    
+    // 创建toast元素
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = `p5-toast ${toastData.type}`;
+    toast.textContent = toastData.message;
+    container.appendChild(toast);
+    
+    // 设置独立倒计时
     setTimeout(() => {
-        toast.classList.add('hidden');
+        // 添加消失动画
+        toast.style.animation = 'slideOutRight 0.3s ease-out forwards';
+        
+        // 动画结束后移除元素
+        setTimeout(() => {
+            toast.remove();
+            state.activeToasts--;
+            // 处理队列中的下一条
+            processToastQueue();
+        }, 300);
     }, 3000);
 }
 
