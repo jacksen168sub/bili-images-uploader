@@ -1081,7 +1081,7 @@ async function copyToClipboard(text, label) {
         try {
             await navigator.clipboard.writeText(text);
             showToast(`${label} 已复制到剪贴板`, 'success');
-            // return;
+            return;
         } catch (err) {
             console.warn('clipboard.writeText failed:', err);
             // 继续尝试降级方案
@@ -1107,7 +1107,7 @@ async function copyToClipboard(text, label) {
         
         if (success) {
             showToast(`${label} 已复制到剪贴板`, 'success');
-            // return;
+            return;
         }
     } catch (e) {
         console.error('execCommand copy failed:', e);
