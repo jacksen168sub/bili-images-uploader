@@ -1320,3 +1320,30 @@ input {
 .queue-item:hover .queue-item-status {
     color: var(--p5-white);
 }
+
+/* ===================================
+   复制模态框样式
+   =================================== */
+.p5-modal-copy {
+    max-width: 600px;
+    width: 90vw;
+}
+
+.copy-modal-hint {
+    font-size: var(--p5-font-size-base);
+    font-weight: bold;
+    color: var(--p5-white);
+    margin-bottom: var(--p5-spacing-md);
+    text-transform: uppercase;
+    transform: skew(-5deg);
+}
+
+.copy-modal-textarea {
+    min-height: 100px;
+    max-height: 200px;
+    resize: none;
+    transform: skew(0deg);
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: var(--p5-font-size-sm);
+    word-break: break-all;
+}

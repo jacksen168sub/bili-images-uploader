@@ -229,6 +229,26 @@
                 </div>
             </div>
         </div>
+
+        <!-- 复制文本模态框 -->
+        <div id="copy-modal" class="p5-modal hidden">
+            <div class="p5-modal-mask"></div>
+            <div class="p5-modal-container p5-modal-copy">
+                <div class="p5-modal-content">
+                    <p class="copy-modal-hint">请手动复制以下内容：</p>
+                    <textarea id="copy-modal-text" class="p5-input copy-modal-textarea" readonly></textarea>
+                </div>
+                <div class="p5-modal-footer">
+                    <button id="copy-modal-close" class="p5-button p5-button-primary">
+                        <svg class="button-svg" viewBox="0 0 100 50" preserveAspectRatio="none">
+                            <polygon class="red" points="10,20 80,20 80,30, 20,30"></polygon>
+                            <polygon class="blue" points="30,10 90,30 100,35, 20,50"></polygon>
+                        </svg>
+                        确定
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="/static/js/snap.svg-min.js"></script>

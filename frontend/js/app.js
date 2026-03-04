@@ -549,13 +549,7 @@ async function copySuccessUrls() {
     }
     
     const urls = successItems.map(item => item.httpsUrl).join('\n');
-    
-    try {
-        await navigator.clipboard.writeText(urls);
-        showToast(`已复制 ${successItems.length} 个URL`, 'success');
-    } catch (err) {
-        showToast('复制失败', 'error');
-    }
+    await copyToClipboard(urls, `${successItems.length} 个URL`);
 }
 
 // ===================================
@@ -920,13 +914,23 @@ function initEventListeners() {
     // 清除失效按钮
     document.getElementById('clear-invalid').addEventListener('click', clearInvalidImages);
 
-    // 模态框事件
+    // 图片预览模态框事件
     document.getElementById('modal-close').addEventListener('click', closeImageModal);
 
-    // 点击遮罩关闭模态框
-    document.querySelector('.p5-modal-mask').addEventListener('click', (e) => {
+    // 点击遮罩关闭图片预览模态框
+    document.querySelector('#image-modal .p5-modal-mask').addEventListener('click', (e) => {
         if (e.target.classList.contains('p5-modal-mask')) {
             closeImageModal();
+        }
+    });
+
+    // 复制模态框事件
+    document.getElementById('copy-modal-close').addEventListener('click', closeCopyModal);
+
+    // 点击遮罩关闭复制模态框
+    document.querySelector('#copy-modal .p5-modal-mask').addEventListener('click', (e) => {
+        if (e.target.classList.contains('p5-modal-mask')) {
+            closeCopyModal();
         }
     });
 }
@@ -1066,25 +1070,77 @@ function closeImageModal() {
 // 剪贴板操作
 // ===================================
 async function copyToClipboard(text, label) {
+    // 检查是否在安全上下文（HTTPS或localhost）
+    const isSecureContext = window.isSecureContext || 
+                            location.protocol === 'https:' || 
+                            location.hostname === 'localhost' || 
+                            location.hostname === '127.0.0.1';
+    
+    // 优先尝试现代API（仅安全上下文可用）
+    if (isSecureContext && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        try {
+            await navigator.clipboard.writeText(text);
+            showToast(`${label} 已复制到剪贴板`, 'success');
+            // return;
+        } catch (err) {
+            console.warn('clipboard.writeText failed:', err);
+            // 继续尝试降级方案
+        }
+    }
+    
+    // 降级方案：使用execCommand
     try {
-        await navigator.clipboard.writeText(text);
-        showToast(`${label} 已复制到剪贴板`, 'success');
-    } catch (err) {
-        // 降级方案
         const textarea = document.createElement('textarea');
         textarea.value = text;
-        textarea.style.position = 'fixed';
-        textarea.style.opacity = '0';
+        // 确保textarea不可见但仍在文档流中
+        textarea.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;padding:0;border:0;outline:0;box-shadow:none;background:transparent;opacity:0;';
+        textarea.setAttribute('readonly', ''); // 防止移动端键盘弹出
         document.body.appendChild(textarea);
+        
+        // 选中内容
+        textarea.focus();
         textarea.select();
-        try {
-            document.execCommand('copy');
-            showToast(`${label} 已复制到剪贴板`, 'success');
-        } catch (e) {
-            showToast('复制失败，请手动复制', 'error');
-        }
+        textarea.setSelectionRange(0, textarea.value.length); // iOS兼容
+        
+        const success = document.execCommand('copy');
         document.body.removeChild(textarea);
+        
+        if (success) {
+            showToast(`${label} 已复制到剪贴板`, 'success');
+            // return;
+        }
+    } catch (e) {
+        console.error('execCommand copy failed:', e);
     }
+    
+    // 所有方法都失败，显示手动复制弹窗
+    showCopyModal(text);
+}
+
+/**
+ * 显示手动复制弹窗
+ */
+function showCopyModal(text) {
+    const modal = document.getElementById('copy-modal');
+    const textarea = document.getElementById('copy-modal-text');
+    
+    textarea.value = text;
+    modal.classList.remove('hidden');
+    
+    // 自动选中文本
+    setTimeout(() => {
+        textarea.focus();
+        textarea.select();
+        textarea.setSelectionRange(0, text.length);
+    }, 100);
+}
+
+/**
+ * 关闭复制弹窗
+ */
+function closeCopyModal() {
+    const modal = document.getElementById('copy-modal');
+    modal.classList.add('hidden');
 }
 
 // ===================================
