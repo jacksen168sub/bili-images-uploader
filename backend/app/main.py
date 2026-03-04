@@ -190,12 +190,12 @@ async def upload_images(
             })
             continue
         
-        # 验证文件大小（10MB限制）
-        if file_size > 10 * 1024 * 1024:
+        # 验证文件大小（20MB限制）
+        if file_size > 20 * 1024 * 1024:
             results.append({
                 "success": False,
                 "filename": filename,
-                "error": "文件大小超过10MB限制"
+                "error": "文件大小超过20MB限制"
             })
             continue
         
